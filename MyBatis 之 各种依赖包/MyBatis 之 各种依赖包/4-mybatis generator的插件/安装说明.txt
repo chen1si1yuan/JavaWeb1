@@ -1,0 +1,13 @@
+方式1：站点上直接安装
+Help—>install from site...
+http://mybatis.googlecode.com/svn/sub-projects/generator/trunk/eclipse/UpdateSite/
+
+方式2：
+1. 把plugins中的所有jar拷贝到eclipse的plugins文件夹之中
+2. 把features中的所有文件夹拷贝到eclipse的features文件夹之中
+3. 重启eclipse，ok
+
+方式3：
+
+将给定的plugins和feaures目录直接拷贝到MyEclipse Professional\dropins
+重启myeclipse

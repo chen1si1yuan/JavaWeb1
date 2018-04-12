@@ -1,0 +1,173 @@
+mybatis-spring从1.1升级到1.2所带来的dao层级的编写问题
+
+
+ 
+我们可以先来看看mybatis-spring框架的1.1.1版本中关于SqlSessionDaoSupport的代码吧：
+ 
+package org.mybatis.spring.support;
+
+import static org.springframework.util.Assert.*;
+
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.mybatis.spring.SqlSessionTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.support.DaoSupport;
+
+/**
+ * Convenient super class for MyBatis SqlSession data access objects.
+ * It gives you access to the template which can then be used to execute SQL methods.
+ * <p>
+ * This class needs a SqlSessionTemplate or a SqlSessionFactory.
+ * If both are set the SqlSessionFactory will be ignored.
+ *
+ * @see #setSqlSessionFactory
+ * @see #setSqlSessionTemplate
+ * @see SqlSessionTemplate
+ * @version $Id: SqlSessionDaoSupport.java 4885 2012-03-12 09:58:54Z simone.tripodi $
+ */
+public abstract class SqlSessionDaoSupport extends DaoSupport {
+
+  private SqlSession sqlSession;
+
+  private boolean externalSqlSession;
+
+  @Autowired(required = false)
+  public final void setSqlSessionFactory(SqlSessionFactory sqlSessionFactory) {
+    if (!this.externalSqlSession) {
+      this.sqlSession = new SqlSessionTemplate(sqlSessionFactory);
+    }
+  }
+
+  @Autowired(required = false)
+  public final void setSqlSessionTemplate(SqlSessionTemplate sqlSessionTemplate) {
+    this.sqlSession = sqlSessionTemplate;
+    this.externalSqlSession = true;
+  }
+
+  /**
+   * Users should use this method to get a SqlSession to call its statement methods
+   * This is SqlSession is managed by spring. Users should not commit/rollback/close it
+   * because it will be automatically done.
+   *
+   * @return Spring managed thread safe SqlSession
+   */
+  public final SqlSession getSqlSession() {
+    return this.sqlSession;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  protected void checkDaoConfig() {
+    notNull(this.sqlSession, "Property 'sqlSessionFactory' or 'sqlSessionTemplate' are required");
+  }
+
+}
+ 
+　　从上面的源码可以看出：在方法setSqlSessionFactory和setSqlSessionTemplate方法上面都标注有：“@Autowired(required = false)”这样的注解。
+ 
+所以我们在编写dao层级代码的时候只需要dao直接继承SqlSessionDaoSupport，并标注注解@Repository，然后就可以使用类似的getSqlSession().selectList("User.selectUsers");
+这样的方法来使用它了，而且在spring的配置文件中的配置也比较少：
+ 
+ <tx:annotation-driven transaction-manager="txManager"
+                          proxy-target-class="true"/>
+
+    <bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="configLocation" value="classpath:mybatis-config.xml"/>
+    </bean>
+ 
+　　
+ 
+　　但是升级到1.2之后，我们看看SqlSessionDaoSupport的源代码：
+ 
+public abstract class SqlSessionDaoSupport extends DaoSupport {
+
+  private SqlSession sqlSession;
+
+  private boolean externalSqlSession;
+
+  public void setSqlSessionFactory(SqlSessionFactory sqlSessionFactory) {
+    if (!this.externalSqlSession) {
+      this.sqlSession = new SqlSessionTemplate(sqlSessionFactory);
+    }
+  }
+
+  public void setSqlSessionTemplate(SqlSessionTemplate sqlSessionTemplate) {
+    this.sqlSession = sqlSessionTemplate;
+    this.externalSqlSession = true;
+  }
+
+  /**
+   * Users should use this method to get a SqlSession to call its statement methods
+   * This is SqlSession is managed by spring. Users should not commit/rollback/close it
+   * because it will be automatically done.
+   *
+   * @return Spring managed thread safe SqlSession
+   */
+  public SqlSession getSqlSession() {
+    return this.sqlSession;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  protected void checkDaoConfig() {
+    notNull(this.sqlSession, "Property 'sqlSessionFactory' or 'sqlSessionTemplate' are required");
+  }
+
+}
+ 
+　　
+ 
+　　从上面的源码可以看出：在方法setSqlSessionFactory和setSqlSessionTemplate方法上面现在都没有标注有：“@Autowired(required = false)”这样的注解。
+ 
+如果一些系统直接从mybatis-spring1.1.1升级到1.2版本的时候，就会出现问题。
+ 
+在1.2版本下面有几种方式来使用：
+ 
+第一种，基于注解：
+ 
+@Repository
+public class UserDao extends SqlSessionDaoSupport{
+    public List<User> userList() {
+        return getSqlSession().selectList("User.selectUsers");
+    }
+
+    @Override
+    @Autowired
+    public void setSqlSessionFactory(SqlSessionFactory sqlSessionFactory) {
+        super.setSqlSessionFactory(sqlSessionFactory);
+    }
+}
+ 
+　　
+ 
+　　我们自己重写set方法就可以了。在这种情况下spring的配置文件不需要修改。
+ 
+第二章基于xml文件配置：
+ 
+public class UserDao extends SqlSessionDaoSupport {
+    public List<User> userList() {
+        return getSqlSession().selectList("User.selectUsers");
+    }
+}
+ 
+　　
+ 
+　　但是需要在spring的配置文件中增加这个UserDao的配置：
+ 
+    <bean id="userDao" class="com.qunar.corp.paginator.dao.UserDao">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory"/>
+    </bean>
+ 
+　　
+ 
+　　第一种基于注解的配置，好处是不需要编写xml，但是这种比较容易侵入业务逻辑。
+ 
+     第二种基于xml配置，好处是不侵入业务逻辑，但是当dao的数量很多的时候，需要在xml中配置好多。

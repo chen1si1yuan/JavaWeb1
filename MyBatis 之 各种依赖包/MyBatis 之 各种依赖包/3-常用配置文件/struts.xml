@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE struts PUBLIC
+     "-//Apache Software Foundation//DTD Struts Configuration 2.1.7//EN"
+     "http://struts.apache.org/dtds/struts-2.3.dtd">
+<struts>
+     <constant name="struts.ui.theme" value="simple"></constant>
+     <constant name="struts.devMode" value="true"></constant>
+     <constant name="struts.objectFactory" value="spring"></constant>
+     
+     <package name="user" namespace="/user" extends="struts-default">
+          <action name="userAction_*" class="cn.itcast.mybatis.action.UserAction" method="{1}">
+               <result name="pview">/WEB-INF/jsps/user/jUserView.jsp</result>
+               <result name="plist">/WEB-INF/jsps/user/jUserList.jsp</result>
+               <result name="pcreate">/WEB-INF/jsps/user/jUserCreate.jsp</result>
+               <result name="pupdate">/WEB-INF/jsps/user/jUserUpdate.jsp</result>
+               <result name="actlist" type="redirectAction">/user/userAction_list</result>
+          </action>
+     </package>
+</struts>

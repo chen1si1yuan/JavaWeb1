@@ -1,0 +1,20 @@
+创建User表
+
+
+create table USER_C
+(
+   ID                   varchar(40) not null,
+   NAME            varchar(30),
+   AGE                int,
+   ADDRESS       varchar(200),
+   primary key (ID)
+);
+
+加入测试数据
+
+insert  into `user_c`(`id`,`name`,`age`,`address`) 
+values ('1','夏言',73,'桂州村'),
+('2','严嵩',87,'分宜县城介桥村'),
+('3','徐阶',80,'明松江府华亭县'),
+('4','高拱',66,'河南省新郑市高老庄村'),
+('5','张居正',58,'江陵');
